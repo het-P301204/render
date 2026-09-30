@@ -1,0 +1,40 @@
+{
+  "engine": "mako",
+  "vulnerable_file": "vulnerable_app.py",
+  "hardened_file": "hardened_app.py",
+  "changes": [
+    {
+      "line_vulnerable": "result = Template(user_input).render()",
+      "line_hardened": "if MAKO_SYNTAX_PATTERN.search(user_input): return blocked; result = _STATIC_TEMPLATE.render(value=user_input)",
+      "explanation": "The vulnerable version compiles user input as a Mako template. Mako evaluates ${expr} as arbitrary Python expressions and <%...%> blocks as Python statements with no sandboxing. Any Python builtin or importable module is accessible, making RCE trivial with __import__('os'). The hardened version rejects any input containing Mako syntax delimiters (${, <%, %>, <%!, ##) and uses a pre-compiled static template where user input is the 'value' variable, HTML-escaped via the | h filter."
+    }
+  ],
+  "stages_affected": {
+    "detect": {
+      "payload": "${7*7}",
+      "vulnerable": "49",
+      "hardened": "BLOCKED"
+    },
+    "fingerprint": {
+      "payload": "${self.__class__}",
+      "vulnerable": "mako_class_info_leaked",
+      "hardened": "BLOCKED"
+    },
+    "extract": {
+      "payload": "${self.module.__dict__}",
+      "vulnerable": "module_dict_extracted",
+      "hardened": "BLOCKED"
+    },
+    "escape": {
+      "payload": "${self.module}",
+      "vulnerable": "compiled_module_accessed",
+      "hardened": "BLOCKED"
+    },
+    "rce": {
+      "payload": "${__import__('os').popen('whoami').read()}",
+      "vulnerable": "command_executed",
+      "hardened": "BLOCKED",
+      "alt_payload": "<%! import os %>${os.popen('id').read()}"
+    }
+  }
+}

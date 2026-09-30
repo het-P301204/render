@@ -1,0 +1,49 @@
+{
+  "engine": "handlebars+nunjucks",
+  "vulnerable_file": "vulnerable_app.js",
+  "hardened_file": "hardened_app.js",
+  "changes": [
+    {
+      "engine": "handlebars",
+      "line_vulnerable": "const template = Handlebars.compile(userInput); const result = template({});",
+      "line_hardened": "if (HBS_DANGER_PATTERN.test(userInput)) { return blocked; } const template = hbsSandbox.compile('User input: {{value}}', { allowProtoPropertiesByDefault: false }); const result = template({ value: userInput });",
+      "explanation": "The vulnerable version compiles user input as a Handlebars template, letting the user write arbitrary helper invocations and property lookups on the context. The hardened version rejects dangerous keywords (constructor, prototype, __proto__) and passes user input as a context variable in a static template, with prototype access disabled."
+    },
+    {
+      "engine": "nunjucks",
+      "line_vulnerable": "const result = nunjucks.renderString(userInput, {});",
+      "line_hardened": "if (TEMPLATE_SYNTAX_PATTERN.test(userInput)) { return blocked; } const result = nunjucksEnv.renderString('User input: {{ value }}', { value: userInput });",
+      "explanation": "The vulnerable version passes user input to nunjucks.renderString(), which compiles and renders it as a Nunjucks template. Nunjucks has Jinja2-like syntax and allows accessing JavaScript's prototype chain. The hardened version rejects template syntax and prototype-access patterns, then renders a static template with user input as a data variable using a sandboxed environment."
+    }
+  ],
+  "stages_affected": {
+    "detect": {
+      "handlebars_payload": "{{this}}",
+      "nunjucks_payload": "{{7*7}}",
+      "vulnerable": "context_dump / 49",
+      "hardened": "BLOCKED"
+    },
+    "fingerprint": {
+      "handlebars_payload": "{{constructor}}",
+      "nunjucks_payload": "{{'a'.constructor}}",
+      "vulnerable": "function_Object / String constructor",
+      "hardened": "BLOCKED"
+    },
+    "extract": {
+      "handlebars_payload": "{{#with process}}{{env}}{{/with}}",
+      "nunjucks_payload": "{{range.constructor('return process')()}}",
+      "vulnerable": "env_extracted",
+      "hardened": "BLOCKED"
+    },
+    "escape": {
+      "nunjucks_payload": "{{'a'.constructor.prototype}}",
+      "vulnerable": "prototype_accessed",
+      "hardened": "BLOCKED"
+    },
+    "rce": {
+      "nunjucks_payload": "{{range.constructor(\"return global.process.mainModule.require('child_process').execSync('id').toString()\")()}}",
+      "vulnerable": "command_executed",
+      "hardened": "BLOCKED"
+    }
+  }
+}

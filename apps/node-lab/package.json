@@ -1,0 +1,15 @@
+{
+  "name": "render-node-lab",
+  "version": "1.0.0",
+  "description": "RENDER Platform — Node.js SSTI Lab (Handlebars + Nunjucks)",
+  "scripts": {
+    "vulnerable": "node vulnerable_app.js",
+    "hardened": "node hardened_app.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.0",
+    "handlebars": "^4.7.8",
+    "nunjucks": "^3.2.4"
+  }
+}

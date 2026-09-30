@@ -1,0 +1,39 @@
+{
+  "engine": "jinja2",
+  "vulnerable_file": "vulnerable_app.py",
+  "hardened_file": "hardened_app.py",
+  "changes": [
+    {
+      "line_vulnerable": "result = Template(user_input).render()",
+      "line_hardened": "if TEMPLATE_SYNTAX_PATTERN.search(user_input): return blocked; template = env.from_string('User input: {{ value }}'); result = template.render(value=user_input)",
+      "explanation": "The vulnerable version passes user input directly to Jinja2's Template constructor, allowing the user to write arbitrary Jinja2 template expressions ({{ }}, {% %}, {# #}). Any Jinja2 expression including Python builtins access, config dumping, and OS command execution can be injected. The hardened version first rejects any input containing template delimiter characters, then uses a static template where user input is passed as a named variable, never evaluated as template source code."
+    }
+  ],
+  "stages_affected": {
+    "detect": {
+      "payload": "{{7*7}}",
+      "vulnerable": "49",
+      "hardened": "BLOCKED"
+    },
+    "fingerprint": {
+      "payload": "{{config}}",
+      "vulnerable": "engine_info_leaked",
+      "hardened": "BLOCKED"
+    },
+    "extract": {
+      "payload": "{{config.items()}}",
+      "vulnerable": "config_extracted",
+      "hardened": "BLOCKED"
+    },
+    "escape": {
+      "payload": "{{''._ _class_ _._ _mro_ _[1]._ _subclasses_ _()}}",
+      "vulnerable": "builtins_accessed",
+      "hardened": "BLOCKED"
+    },
+    "rce": {
+      "payload": "{{''._ _class_ _._ _mro_ _[1]._ _subclasses_ _()[X]('id',shell=True,stdout=-1).communicate()}}",
+      "vulnerable": "command_executed",
+      "hardened": "BLOCKED"
+    }
+  }
+}
